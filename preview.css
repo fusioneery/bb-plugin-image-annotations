@@ -1,0 +1,58 @@
+[role="dialog"]:has(> .bb-image-annotations-preview) {
+  flex-direction: column;
+  row-gap: 0.75rem;
+  padding-block: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-bottom));
+}
+
+[role="dialog"]:has(> .bb-image-annotations-preview) > img {
+  min-block-size: 0;
+}
+
+.bb-image-annotations-preview {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  color: white;
+  cursor: auto;
+  font-size: 0.875rem;
+}
+
+.bb-image-annotations-preview button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.75);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bb-image-annotations-preview button:hover {
+  background: black;
+}
+
+.bb-image-annotations-preview button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+
+.bb-image-annotations-preview button:disabled {
+  cursor: wait;
+}
+
+.bb-image-annotations-preview p {
+  max-width: 13rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: black;
+  text-align: center;
+}
