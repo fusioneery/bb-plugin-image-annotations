@@ -39,6 +39,12 @@
   background: black;
 }
 
+.bb-image-annotations-preview button svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex: none;
+}
+
 .bb-image-annotations-preview button:focus-visible {
   outline: 2px solid white;
   outline-offset: 3px;

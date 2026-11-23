@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { annotationFilename, readAnnotations, writeAnnotations } from "./annotations.ts";
+import { annotationFilename, annotationSuffix, readAnnotations, writeAnnotations } from "./annotations.ts";
 
 const path = "capture-1824552000-id.png";
 
@@ -26,6 +26,8 @@ test("sidecar names are stable and distinguish different uploads with the same n
   assert.match(name, /^capture-annotations-[0-9a-f]{16}\.md$/);
   assert.equal(annotationFilename("capture.png", path), name);
   assert.notEqual(annotationFilename("capture.png", "capture-1824552000-other.png"), name);
+  assert.ok(annotationFilename(path, path).endsWith(annotationSuffix(path)));
+  assert.ok(name.endsWith(annotationSuffix(path)));
 });
 
 test("unrelated and invalid annotation files are rejected", () => {

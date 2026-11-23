@@ -1,4 +1,4 @@
-span.bb-ia-hidden-sidecar {
+:is(a, button, span, div):is(.bb-ia-hidden-sidecar, .bb-ia-hidden-history-utility) {
   display: none;
 }
 
@@ -12,7 +12,7 @@ span.bb-ia-hidden-sidecar {
   block-size: 1.5rem;
   border: 1px solid white;
   border-radius: 999px;
-  background: #1558ca;
+  background: #2f2d2b;
   color: white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
   pointer-events: none;
@@ -25,4 +25,12 @@ span.bb-ia-hidden-sidecar {
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 8h8m-8 4h5' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
   forced-color-adjust: none;
+}
+
+@media (forced-colors: active) {
+  .bb-ia-thumbnail-chip {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
+  }
 }

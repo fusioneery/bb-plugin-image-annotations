@@ -8,11 +8,15 @@ export function annotationFilename(imageName: string, imagePath: string): string
     .replace(/[^a-z0-9-]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 70);
+  return `${stem || "image"}${annotationSuffix(imagePath)}`;
+}
+
+export function annotationSuffix(imagePath: string): string {
   let hash = 0xcbf29ce484222325n;
   for (const byte of new TextEncoder().encode(imagePath)) {
     hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * 0x100000001b3n);
   }
-  return `${stem || "image"}-annotations-${hash.toString(16).padStart(16, "0")}.md`;
+  return `-annotations-${hash.toString(16).padStart(16, "0")}.md`;
 }
 
 function markdownText(text: string): string {

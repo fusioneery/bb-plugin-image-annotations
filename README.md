@@ -36,8 +36,8 @@ closes the editor and saves the comments.
 The plugin uses BB's project attachment storage and makes no external service
 requests. Comments are kept in a Markdown attachment with numbered notes and
 coordinates measured from the top-left corner of the image. The composer shows
-the annotation icon on the image, and BB includes the Markdown when you send
-the draft.
+the annotation icon on the image. BB includes the Markdown in the agent input
+when you send the draft, and the plugin hides its file chip from the message.
 
 ## Develop locally
 

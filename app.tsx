@@ -5,6 +5,7 @@ import type { ComposerAttachment } from "@get-bb/plugin-sdk/app";
 import { annotationFilename, readAnnotations, writeAnnotations } from "./annotations";
 import { annotationPairs, findSidecar, watchAnnotationChips } from "./composer";
 import { AnnotationEditor, type Annotation } from "./editor";
+import { hideHistoryUtilities } from "./history";
 import { projectAttachmentUrl, watchPreview, type Preview } from "./preview";
 import "./preview.css";
 import "./composer.css";
@@ -87,8 +88,8 @@ function ComposerAnnotationBridge() {
         : (await sdk.threads.get({ threadId: scope.threadId, signal: request.signal })).projectId;
       if (!projectId) throw new Error("The draft project is unavailable.");
 
-      const filename = annotationFilename(preview.source.name, preview.source.path);
-      const previous = findSidecar(composer.draft.attachments, filename);
+      const previous = findSidecar(composer.draft.attachments, preview.source.path);
+      const filename = previous?.name ?? annotationFilename(preview.source.name, preview.source.path);
       let annotations: Annotation[] = [];
       if (previous) {
         const { bytes } = await sdk.projects.attachments.read({
@@ -129,7 +130,7 @@ function ComposerAnnotationBridge() {
       if (!current.attachments.some((item) => item.path === source.path && item.sourceProjectId === source.sourceProjectId)) {
         throw new Error("This image is no longer attached to the draft.");
       }
-      const previous = findSidecar(current.attachments, session.filename);
+      const previous = findSidecar(current.attachments, source.path);
       if (previous?.path !== session.previous?.path) {
         throw new Error("The annotation attachment changed while you were editing.");
       }
@@ -151,6 +152,11 @@ function ComposerAnnotationBridge() {
     {preview && createPortal(
       <div className="bb-image-annotations-preview">
         <button type="button" disabled={opening} onClick={() => void openEditor(preview)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m10 13 7.5-8.5a2.1 2.1 0 1 1 3 3L12 15M10 13l2 2" />
+            <path d="M10 13c-2.2-.7-4.2.7-4.4 3.1-.1 1.6-.7 2.6-2.1 3.4 3.8 1.8 8.4-.4 8.5-4.5" />
+          </svg>
           {opening ? "Opening…" : "Annotate"}
         </button>
         {openError && <p role="alert">{openError}</p>}
@@ -174,6 +180,7 @@ function ComposerAnnotationBridge() {
 }
 
 export default definePluginApp((app) => {
+  app.contentScripts.register({ id: "hide-history-utilities", mount: hideHistoryUtilities });
   app.composer.customize({
     id: "attached-images",
     banners: [{ id: "preview-bridge", chrome: "bare", component: ComposerAnnotationBridge }],
