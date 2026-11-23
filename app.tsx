@@ -1,16 +1,18 @@
-import { definePluginApp, useComposer, useSdk } from "@get-bb/plugin-sdk/app";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { definePluginApp, useComposer, useSdk, type ComposerAttachment, type ComposerDraftSnapshot } from "@get-bb/plugin-sdk/app";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ComposerAttachment } from "@get-bb/plugin-sdk/app";
-import { annotationFilename, readAnnotations, writeAnnotations } from "./annotations";
-import { annotationPairs, findSidecar, watchAnnotationChips } from "./composer";
-import { AnnotationEditor, type Annotation } from "./editor";
+import { annotationFilename, writeAnnotations } from "./annotations";
+import { sidecarCandidates } from "./composer";
+import { draftProject, readDraftAnnotations, replaceSidecar, requireCurrentSidecar, useDraftAnnotations } from "./draft-annotations";
+import { AnnotationEditor } from "./editor";
+import type { Annotation } from "./geometry";
 import { hideHistoryUtilities } from "./history";
 import { projectAttachmentUrl, watchPreview, type Preview } from "./preview";
 import "./preview.css";
 import "./composer.css";
 
 interface EditingSession {
+  draftKey: string;
   preview: Preview;
   projectId: string;
   filename: string;
@@ -28,35 +30,7 @@ function ComposerAnnotationBridge() {
   const [editor, setEditor] = useState<EditingSession | null>(null);
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState("");
-  const attachments = composer.draft.attachments;
-  const pairs = useMemo(() => annotationPairs(attachments), [attachments]);
-  const previousPairs = useRef<{ key: string; pairs: typeof pairs } | null>(null);
-
-  useLayoutEffect(() => {
-    const element = marker.current;
-    if (element && pairs.length > 0) return watchAnnotationChips(element, attachments, pairs);
-  }, [attachments, pairs]);
-
-  useEffect(() => {
-    const previous = previousPairs.current;
-    previousPairs.current = { key: composer.key, pairs };
-    if (previous?.key !== composer.key || !previous.pairs.length) return;
-    const paths = new Set(attachments.map(({ path }) => path));
-    const orphans = previous.pairs.filter(({ image, sidecar }) => !paths.has(image.path) && paths.has(sidecar.path));
-    if (!orphans.length) return;
-    composer.replace((current) => {
-      const currentPaths = new Set(current.attachments.map(({ path }) => path));
-      const remove = new Set(orphans
-        .filter(({ image }) => !currentPaths.has(image.path))
-        .map(({ sidecar }) => sidecar.path));
-      if (!remove.size) return current;
-      return {
-        ...current,
-        attachments: current.attachments.filter(({ path }) => !remove.has(path)),
-        mentions: current.mentions.filter((mention) => mention.kind !== "attachment" || !remove.has(mention.path)),
-      };
-    });
-  }, [attachments, composer, pairs]);
+  const rememberSidecar = useDraftAnnotations(composer, sdk, marker);
 
   useEffect(() => {
     const element = marker.current;
@@ -75,35 +49,37 @@ function ComposerAnnotationBridge() {
   }, [composer]);
 
   async function openEditor(preview: Preview) {
-    if (loading.current) loading.current.abort();
+    loading.current?.abort();
+    const draftKey = composer.key;
+    const [previous, duplicate] = sidecarCandidates(composer.draft.attachments, preview.source.path);
+    if (duplicate) {
+      setOpenError("Remove the extra annotation attachments to continue.");
+      return;
+    }
     const request = new AbortController();
     loading.current = request;
     setOpening(true);
     setOpenError("");
     try {
-      const scope = composer.scope;
-      const sourceProject = projectAttachmentUrl(preview.image.src)?.projectId;
-      const projectId = scope.kind === "new-thread"
-        ? scope.projectId ?? preview.source.sourceProjectId ?? sourceProject
-        : (await sdk.threads.get({ threadId: scope.threadId, signal: request.signal })).projectId;
+      const sourceProject = preview.source.sourceProjectId ?? projectAttachmentUrl(preview.image.src)?.projectId;
+      const projectId = await draftProject(sdk, composer.scope, request.signal, sourceProject);
       if (!projectId) throw new Error("The draft project is unavailable.");
 
-      const previous = findSidecar(composer.draft.attachments, preview.source.path);
       const filename = previous?.name ?? annotationFilename(preview.source.name, preview.source.path);
-      let annotations: Annotation[] = [];
-      if (previous) {
-        const { bytes } = await sdk.projects.attachments.read({
-          path: previous.path,
-          projectId: previous.sourceProjectId ?? projectId,
-          signal: request.signal,
-        });
-        annotations = readAnnotations(new TextDecoder().decode(bytes), preview.source.path);
-      }
-      if (request.signal.aborted || currentPreview.current !== preview || !preview.dialog.isConnected) return;
+      const pair = previous ? { image: preview.source, sidecar: previous } : null;
+      const annotations = pair ? await readDraftAnnotations(sdk, pair, projectId, request.signal) : [];
+      if (request.signal.aborted || draftKey !== composer.key || currentPreview.current !== preview ||
+        !preview.dialog.isConnected) return;
+      requireCurrentSidecar(composer.draft, preview.source, previous);
+      if (pair) rememberSidecar(pair);
       preview.close.click();
-      setEditor({ preview, projectId, filename, previous, annotations });
+      setEditor({ draftKey, preview, projectId, filename, previous, annotations });
     } catch {
-      if (!request.signal.aborted) setOpenError("Couldn’t open image comments. Try again.");
+      if (!request.signal.aborted) {
+        setOpenError(previous
+          ? "Couldn’t read the annotation file. Try again, or remove the file to start over."
+          : "Couldn’t open image comments. Try again.");
+      }
     } finally {
       if (loading.current === request) {
         loading.current = null;
@@ -115,6 +91,11 @@ function ComposerAnnotationBridge() {
   async function saveAnnotations(session: EditingSession, annotations: readonly Annotation[]) {
     if (JSON.stringify(annotations) === JSON.stringify(session.annotations)) return;
     const { source } = session.preview;
+    const checkDraft = (draft: ComposerDraftSnapshot) => {
+      if (composer.key !== session.draftKey) throw new Error("This draft has changed. Close and reopen the editor.");
+      return requireCurrentSidecar(draft, source, session.previous);
+    };
+    checkDraft(composer.draft);
     const upload = annotations.length > 0
       ? await sdk.projects.attachments.upload({
         projectId: session.projectId,
@@ -126,25 +107,8 @@ function ComposerAnnotationBridge() {
       })
       : null;
 
-    composer.replace((current) => {
-      if (!current.attachments.some((item) => item.path === source.path && item.sourceProjectId === source.sourceProjectId)) {
-        throw new Error("This image is no longer attached to the draft.");
-      }
-      const previous = findSidecar(current.attachments, source.path);
-      if (previous?.path !== session.previous?.path) {
-        throw new Error("The annotation attachment changed while you were editing.");
-      }
-      const attachments = previous
-        ? current.attachments.flatMap((item) => item === previous ? upload ? [upload] : [] : [item])
-        : upload ? [...current.attachments, upload] : current.attachments;
-      const mentions = previous
-        ? current.mentions.flatMap((mention) => {
-          if (mention.kind !== "attachment" || mention.path !== previous.path) return [mention];
-          return upload ? [{ ...mention, path: upload.path }] : [];
-        })
-        : current.mentions;
-      return { ...current, attachments, mentions };
-    });
+    if (upload) rememberSidecar({ image: source, sidecar: upload });
+    composer.replace((current) => replaceSidecar(current, checkDraft(current), upload));
   }
 
   return <>

@@ -1,6 +1,8 @@
-import type { Annotation, Point } from "./editor";
+import type { Annotation, Point } from "./geometry";
 
 const marker = "<!-- bb-image-annotations:v1 ";
+export const MAX_ANNOTATIONS = 100;
+export const MAX_COMMENT_LENGTH = 4_000;
 
 export function annotationFilename(imageName: string, imagePath: string): string {
   const stem = imageName
@@ -63,7 +65,7 @@ function isPoint(value: unknown): value is Point {
 
 function isAnnotation(value: unknown): value is Annotation {
   if (typeof value !== "object" || value === null || !("comment" in value) || !("kind" in value)) return false;
-  if (typeof value.comment !== "string" || !value.comment.trim() || value.comment.length > 4_000) return false;
+  if (typeof value.comment !== "string" || !value.comment.trim() || value.comment.length > MAX_COMMENT_LENGTH) return false;
   if (value.kind === "point") return "point" in value && isPoint(value.point);
   return value.kind === "rectangle" && "from" in value && isPoint(value.from) && "to" in value &&
     isPoint(value.to) && value.from.x <= value.to.x && value.from.y <= value.to.y;
@@ -75,7 +77,7 @@ export function readAnnotations(markdown: string, imagePath: string): Annotation
   const metadata: unknown = JSON.parse(markdown.slice(marker.length, end));
   if (typeof metadata !== "object" || metadata === null || !("imagePath" in metadata) ||
     metadata.imagePath !== imagePath || !("annotations" in metadata) || !Array.isArray(metadata.annotations) ||
-    metadata.annotations.length > 100 || !metadata.annotations.every(isAnnotation)) {
+    metadata.annotations.length > MAX_ANNOTATIONS || !metadata.annotations.every(isAnnotation)) {
     throw new Error("Annotation file does not match this image");
   }
   return metadata.annotations;

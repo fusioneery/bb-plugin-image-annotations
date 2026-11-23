@@ -2,13 +2,13 @@ import type { ComposerAttachment } from "@get-bb/plugin-sdk/app";
 import { annotationSuffix } from "./annotations";
 import { composerForm, imageThumbnails, thumbnailSource } from "./preview";
 
-type AnnotationPair = { image: ComposerAttachment; sidecar: ComposerAttachment };
+export type AnnotationPair = { image: ComposerAttachment; sidecar: ComposerAttachment };
 const chipLabel = "Annotated image";
 const hiddenClass = "bb-ia-hidden-sidecar";
 
-export function findSidecar(attachments: readonly ComposerAttachment[], imagePath: string) {
+export function sidecarCandidates(attachments: readonly ComposerAttachment[], imagePath: string) {
   const suffix = annotationSuffix(imagePath);
-  return attachments.find((attachment) =>
+  return attachments.filter((attachment) =>
     attachment.type === "localFile" && !attachment.hostId && attachment.name.endsWith(suffix),
   );
 }
@@ -18,8 +18,8 @@ export function annotationPairs(attachments: readonly ComposerAttachment[]): Ann
     if (image.hostId || (image.type !== "localImage" && !image.mimeType?.toLowerCase().startsWith("image/"))) {
       return [];
     }
-    const sidecar = findSidecar(attachments, image.path);
-    return sidecar ? [{ image, sidecar }] : [];
+    const [sidecar, duplicate] = sidecarCandidates(attachments, image.path);
+    return sidecar && !duplicate ? [{ image, sidecar }] : [];
   });
 }
 

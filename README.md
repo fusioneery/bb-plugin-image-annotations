@@ -38,6 +38,8 @@ requests. Comments are kept in a Markdown attachment with numbered notes and
 coordinates measured from the top-left corner of the image. The composer shows
 the annotation icon on the image. BB includes the Markdown in the agent input
 when you send the draft, and the plugin hides its file chip from the message.
+If you remove the image while editing a sent message, remove the notes file
+that reappears in the editor as well.
 
 ## Develop locally
 

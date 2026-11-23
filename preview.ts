@@ -14,11 +14,15 @@ export interface Preview {
 }
 
 export function projectAttachmentUrl(src: string): { projectId: string; path: string } | null {
-  const url = new URL(src, window.location.href);
-  if (url.origin !== window.location.origin) return null;
-  const match = /^\/api\/v1\/projects\/([^/]+)\/attachments\/content$/.exec(url.pathname);
-  const path = url.searchParams.get("path");
-  return match && path ? { projectId: decodeURIComponent(match[1]), path } : null;
+  try {
+    const url = new URL(src, window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    const match = /^\/api\/v1\/projects\/([^/]+)\/attachments\/content$/.exec(url.pathname);
+    const path = url.searchParams.get("path");
+    return match && path ? { projectId: decodeURIComponent(match[1]), path } : null;
+  } catch {
+    return null;
+  }
 }
 
 export function composerForm(marker: HTMLElement): HTMLFormElement | null {
@@ -53,7 +57,10 @@ export function thumbnailSource(
   );
   const reference = projectAttachmentUrl(image.src);
   if (reference) {
-    return candidates.find((attachment) => attachment.path === reference.path && !attachment.hostId);
+    return candidates.find((attachment) =>
+      attachment.path === reference.path && !attachment.hostId &&
+      (!attachment.sourceProjectId || attachment.sourceProjectId === reference.projectId),
+    );
   }
   const sameName = thumbnails.filter((button) => button.querySelector("img")?.alt === image.alt);
   if (candidates.length !== sameName.length) return;

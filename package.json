@@ -30,7 +30,7 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "node --test annotations.test.mjs",
+    "test": "node --test annotations.test.mjs gesture.test.mjs",
     "build": "bb plugin build"
   }
 }
