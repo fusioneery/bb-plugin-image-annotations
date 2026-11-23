@@ -3,9 +3,19 @@
 Pin feedback to a point or rectangle on an image in your BB draft. BB sends the
 image and its comments together when you send the message.
 
+## See it in BB
+
+**Pin a comment or outline an area**
+
+![Annotation editor with numbered comments on a pin and a rectangle](docs/screenshots/editor.png)
+
+| Open Annotate from the image preview | Spot annotated images in your draft |
+| --- | --- |
+| ![Annotate button with a brush icon below the image](docs/screenshots/preview.png) | ![A comment badge on an annotated image thumbnail in the composer](docs/screenshots/thumbnail.png) |
+
 ## Install
 
-Once the repository has a `v0.1.0` release tag, install the plugin from Git.
+Install the latest compatible `0.1.x` version from Git.
 
 ```sh
 bb plugin install 'git:https://github.com/fusioneery/bb-plugin-image-annotations.git@semver:^0.1.0'
